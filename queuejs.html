@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queue Tracker</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --primary-hover: #45a049;
+            --background-color: #f5f5f5;
+            --card-background: #ffffff;
+            --text-color: #333333;
+            --border-color: #dddddd;
+            --shadow-color: rgba(0,0,0,0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--background-color);
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: var(--card-background);
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 4px 6px var(--shadow-color);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: var(--text-color);
+        }
+        
+        .card {
+            background-color: var(--card-background);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px var(--shadow-color);
+            border: 1px solid var(--border-color);
+        }
+        
+        h2 {
+            margin-bottom: 15px;
+            color: var(--text-color);
+            font-weight: 500;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        input {
+            flex: 1;
+            padding: 12px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            font-size: 16px;
+        }
+        
+        button {
+            padding: 12px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+        
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        #queue-message {
+            font-size: 1.2em;
+            font-weight: 500;
+            text-align: center;
+            margin: 25px 0;
+            color: var(--primary-color);
+            padding: 15px;
+            background-color: rgba(76, 175, 80, 0.1);
+            border-radius: 4px;
+        }
+        
+        .status-container {
+            margin-top: 30px;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        
+        .status-item {
+            background-color: rgba(0, 0, 0, 0.02);
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .status-label {
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        
+        .status-value {
+            font-size: 1.2em;
+            color: var(--text-color);
+        }
+
+        @media (max-width: 600px) {
+            .input-group {
+                flex-direction: column;
+            }
+            
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Queue Tracker</h1>
+        
+        <div id="start-queue-card" class="card">
+            <h2>Start New Queue</h2>
+            <div class="input-group">
+                <input type="number" id="start-queue-size" placeholder="Number of people in queue" min="1">
+                <button id="start-queue-btn">Start Queue</button>
+            </div>
+        </div>
+        
+        <div id="update-queue-card" class="card hidden">
+            <h2>Update Queue</h2>
+            <div class="input-group">
+                <input type="number" id="update-queue-size" placeholder="Current people in queue" min="0">
+                <button id="update-queue-btn">Update Queue</button>
+            </div>
+        </div>
+        
+        <div id="queue-message" class="hidden"></div>
+        
+        <div id="status-container" class="status-container hidden">
+            <h2>Queue Status</h2>
+            <div id="status-details" class="status-grid"></div>
+        </div>
+    </div>
+
+    <script>
+        // Queue Tracker
+        class QueueTracker {
+            constructor() {
+                this.isActive = false;
+                this.startTime = null;
+                this.initialQueueSize = 0;
+                this.currentQueueSize = 0;
+                this.queueHistory = [];
+                this.estimatedTimePerPerson = 60; // Default: 60 seconds per person
+                this.finishTime = null;
+            }
+            
+            startQueue(queueSize) {
+                this.isActive = true;
+                this.startTime = new Date();
+                this.initialQueueSize = queueSize;
+                this.currentQueueSize = queueSize;
+                this.queueHistory = [{ time: this.startTime, size: queueSize }];
+                this.calculateEstimate();
+                return this.getStatus();
+            }
+            
+            updateQueue(queueSize) {
+                if (!this.isActive) {
+                    return false;
+                }
+                
+                const now = new Date();
+                
+                // If the queue size hasn't changed, just return current status
+                if (this.currentQueueSize === queueSize) {
+                    return this.getStatus();
+                }
+                
+                this.currentQueueSize = queueSize;
+                this.queueHistory.push({ time: now, size: queueSize });
+                
+                // Recalculate time per person based on history
+                if (this.queueHistory.length >= 2) {
+                    let totalTime = 0;
+                    let totalPeople = 0;
+                    
+                    for (let i = 1; i < this.queueHistory.length; i++) {
+                        const prevTime = this.queueHistory[i-1].time;
+                        const prevSize = this.queueHistory[i-1].size;
+                        const currTime = this.queueHistory[i].time;
+                        const currSize = this.queueHistory[i].size;
+                        
+                        const timeDiff = (currTime - prevTime) / 1000; // in seconds
+                        const peopleDiff = prevSize - currSize;
+                        
+                        // Only count positive differences (queue decreased)
+                        if (peopleDiff > 0 && timeDiff > 0) {
+                            totalTime += timeDiff;
+                            totalPeople += peopleDiff;
+                        }
+                    }
+                    
+                    // Update the estimate only if we have meaningful data
+                    if (totalPeople > 0 && totalTime > 0) {
+                        const newEstimate = totalTime / totalPeople;
+                        
+                        // Apply some dampening to avoid wild swings in the estimate
+                        // 70% new estimate, 30% old estimate (if we had one before)
+                        if (this.estimatedTimePerPerson > 0) {
+                            this.estimatedTimePerPerson = (0.7 * newEstimate) + (0.3 * this.estimatedTimePerPerson);
+                        } else {
+                            this.estimatedTimePerPerson = newEstimate;
+                        }
+                        
+                        // Ensure we never go below a reasonable minimum (10 seconds per person)
+                        if (this.estimatedTimePerPerson < 10) {
+                            this.estimatedTimePerPerson = 10;
+                        }
+                    }
+                }
+                
+                this.calculateEstimate();
+                return this.getStatus();
+            }
+            
+            calculateEstimate() {
+                if (this.currentQueueSize <= 0) {
+                    this.finishTime = new Date();
+                    this.isActive = false;
+                } else {
+                    // Make sure we have a positive value for time per person
+                    if (this.estimatedTimePerPerson <= 0) {
+                        this.estimatedTimePerPerson = 60; // Default fallback
+                    }
+                    
+                    const remainingTime = this.currentQueueSize * this.estimatedTimePerPerson;
+                    this.finishTime = new Date(new Date().getTime() + (remainingTime * 1000));
+                }
+            }
+            
+            getStatus() {
+                if (!this.isActive) {
+                    if (!this.startTime) {
+                        return {
+                            isActive: false,
+                            message: "No active queue"
+                        };
+                    } else {
+                        return {
+                            isActive: false,
+                            message: "Queue complete",
+                            finishTime: this.formatTime(this.finishTime, true)
+                        };
+                    }
+                }
+                
+                const now = new Date();
+                
+                // Calculate elapsed time
+                const elapsed = (now - this.startTime) / 1000; // in seconds
+                
+                // Calculate remaining time (ensure it's never negative)
+                const remaining = Math.max(0, (this.finishTime - now) / 1000); // in seconds
+                
+                return {
+                    isActive: true,
+                    currentSize: this.currentQueueSize,
+                    initialSize: this.initialQueueSize,
+                    startTime: this.formatTime(this.startTime, true),
+                    currentTime: this.formatTime(now, true),
+                    elapsedTime: this.formatDuration(elapsed),
+                    estimatedFinishTime: this.formatTime(this.finishTime, true),
+                    remainingTime: this.formatDuration(remaining),
+                    estimatedTimePerPerson: this.formatDuration(this.estimatedTimePerPerson),
+                    rawSecondsPerPerson: Math.round(this.estimatedTimePerPerson * 10) / 10
+                };
+            }
+            
+            formatTime(date, use12Hour = false) {
+                if (!date) return '';
+                
+                if (use12Hour) {
+                    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                } else {
+                    return date.toTimeString().substring(0, 8); // HH:MM:SS
+                }
+            }
+            
+            formatDuration(seconds) {
+                if (seconds < 0) seconds = 0;
+                
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                const secs = Math.floor(seconds % 60);
+                
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+        }
+
+        // DOM Elements
+        const startQueueCard = document.getElementById('start-queue-card');
+        const updateQueueCard = document.getElementById('update-queue-card');
+        const startQueueSize = document.getElementById('start-queue-size');
+        const startQueueBtn = document.getElementById('start-queue-btn');
+        const updateQueueSize = document.getElementById('update-queue-size');
+        const updateQueueBtn = document.getElementById('update-queue-btn');
+        const queueMessage = document.getElementById('queue-message');
+        const statusContainer = document.getElementById('status-container');
+        const statusDetails = document.getElementById('status-details');
+        
+        // Create queue tracker instance
+        const queueTracker = new QueueTracker();
+        
+        // Update UI Timer
+        let updateTimer;
+        
+        // Start queue button click
+        startQueueBtn.addEventListener('click', () => {
+            const queueSize = parseInt(startQueueSize.value);
+            if (isNaN(queueSize) || queueSize <= 0) {
+                alert('Please enter a valid queue size (greater than 0)');
+                return;
+            }
+            
+            const status = queueTracker.startQueue(queueSize);
+            updateQueueSize.value = queueSize;
+            updateStatus(status);
+            
+            // Start the update timer
+            if (updateTimer) clearInterval(updateTimer);
+            updateTimer = setInterval(updateTimerUI, 1000);
+        });
+        
+        // Update queue button click
+        updateQueueBtn.addEventListener('click', () => {
+            const queueSize = parseInt(updateQueueSize.value);
+            if (isNaN(queueSize) || queueSize < 0) {
+                alert('Please enter a valid queue size (0 or greater)');
+                return;
+            }
+            
+            const status = queueTracker.updateQueue(queueSize);
+            updateStatus(status);
+        });
+        
+        // Update the UI every second (just the time values, not the whole status)
+        function updateTimerUI() {
+            if (!queueTracker.isActive) {
+                clearInterval(updateTimer);
+                return;
+            }
+            
+            const status = queueTracker.getStatus();
+            
+            // Update only time-based fields for efficiency
+            document.getElementById('current-time').textContent = status.currentTime;
+            document.getElementById('elapsed-time').textContent = status.elapsedTime;
+            document.getElementById('remaining-time').textContent = status.remainingTime;
+            
+            // Update the main message
+            queueMessage.textContent = `Estimated completion time: ${status.estimatedFinishTime}`;
+        }
+        
+        // Update UI with status
+        function updateStatus(status) {
+            if (status.isActive) {
+                startQueueCard.classList.add('hidden');
+                updateQueueCard.classList.remove('hidden');
+                statusContainer.classList.remove('hidden');
+                queueMessage.classList.remove('hidden');
+                
+                queueMessage.textContent = `Estimated completion time: ${status.estimatedFinishTime}`;
+                
+                statusDetails.innerHTML = `
+                    <div class="status-item">
+                        <div class="status-label">Current Queue Size</div>
+                        <div id="current-size" class="status-value">${status.currentSize} people</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">Initial Queue Size</div>
+                        <div class="status-value">${status.initialSize} people</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">Queue Started</div>
+                        <div class="status-value">${status.startTime}</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">Current Time</div>
+                        <div id="current-time" class="status-value">${status.currentTime}</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">Elapsed Time</div>
+                        <div id="elapsed-time" class="status-value">${status.elapsedTime}</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">Average Time Per Person</div>
+                        <div class="status-value">${status.estimatedTimePerPerson} (${status.rawSecondsPerPerson} seconds)</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">Remaining Time</div>
+                        <div id="remaining-time" class="status-value">${status.remainingTime}</div>
+                    </div>
+                `;
+            } else if (status.message === "Queue complete") {
+                if (updateTimer) clearInterval(updateTimer);
+                
+                startQueueCard.classList.remove('hidden');
+                updateQueueCard.classList.add('hidden');
+                statusContainer.classList.add('hidden');
+                queueMessage.classList.remove('hidden');
+                queueMessage.textContent = `Queue completed at ${status.finishTime}`;
+            } else {
+                startQueueCard.classList.remove('hidden');
+                updateQueueCard.classList.add('hidden');
+                statusContainer.classList.add('hidden');
+                queueMessage.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

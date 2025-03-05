@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokegenie Queue Tracker</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/components/raid-boss.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Pokegenie Queue Tracker</h1>
+        
+        <div id="start-queue-card" class="card">
+            <h2>Start New Queue</h2>
+            <div class="input-group">
+                <input type="number" id="start-queue-size" placeholder="Number of people in queue" min="1">
+                <button id="start-queue-btn">Start Queue</button>
+            </div>
+            
+            <!-- Raid Boss Selection Dropdown -->
+            <div class="input-group">
+                <select id="raid-boss-select" class="raid-boss-dropdown">
+                    <option value="" disabled selected>Select Raid Boss</option>
+                    <option value="Genesect">Genesect</option>
+                    <option value="Rayquaza">Rayquaza</option>
+                    <option value="Mewtwo">Mewtwo</option>
+                    <option value="Groudon">Groudon</option>
+                    <option value="Kyogre">Kyogre</option>
+                    <option value="Dialga">Dialga</option>
+                    <option value="Palkia">Palkia</option>
+                    <option value="Giratina">Giratina</option>
+                    <option value="Reshiram">Reshiram</option>
+                    <option value="Zekrom">Zekrom</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="update-queue-card" class="card hidden">
+            <h2>Update Queue</h2>
+            <div class="input-group">
+                <input type="number" id="update-queue-size" placeholder="Current people in queue" min="0">
+                <button id="update-queue-btn">Update Queue</button>
+            </div>
+            <div class="input-group">
+                <button id="leave-queue-btn" class="secondary-btn">Leave Queue</button>
+            </div>
+        </div>
+        
+        <div id="queue-message" class="hidden"></div>
+        
+        <div id="status-container" class="status-container hidden">
+            <h2>Queue Status</h2>
+            <div id="status-details" class="status-grid"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/models/QueueTracker.js"></script>
+    <script src="js/utils/storage.js"></script>
+    <script src="js/ui/ui-handler.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
