@@ -1,193 +1,151 @@
-// js/ui/ui-handler.js
+// js/utils/storage.js
 
-// DOM Elements
-const startQueueCard = document.getElementById('start-queue-card');
-const updateQueueCard = document.getElementById('update-queue-card');
-const startQueueSize = document.getElementById('start-queue-size');
-const startQueueBtn = document.getElementById('start-queue-btn');
-const updateQueueSize = document.getElementById('update-queue-size');
-const updateQueueBtn = document.getElementById('update-queue-btn');
-const queueMessage = document.getElementById('queue-message');
-const statusContainer = document.getElementById('status-container');
-const statusDetails = document.getElementById('status-details');
-const raidBossSelect = document.getElementById('raid-boss-select'); // Raid boss dropdown reference
-
-// Create queue tracker instance
-const queueTracker = new QueueTracker();
-
-// Update UI Timer
-let updateTimer;
-
-// Start queue button click
-startQueueBtn.addEventListener('click', () => {
-    const queueSize = parseInt(startQueueSize.value);
-    if (isNaN(queueSize) || queueSize <= 0) {
-        alert('Please enter a valid queue size (greater than 0)');
-        return;
-    }
+/**
+ * Save queue data to localStorage
+ * @param {QueueTracker} tracker - The queue tracker instance to save
+ */
+function saveQueueData(tracker) {
+    if (!tracker) return;
     
-    const raidBoss = raidBossSelect.value;
-    if (!raidBoss) {
-        alert('Please select a raid boss');
-        return;
-    }
-    
-    const status = queueTracker.startQueue(queueSize, raidBoss);
-    updateQueueSize.value = queueSize;
-    updateStatus(status);
-    
-    // Save to localStorage
-    saveQueueData();
-    
-    // Start the update timer
-    if (updateTimer) clearInterval(updateTimer);
-    updateTimer = setInterval(updateTimerUI, 1000);
-});
-
-// Update queue button click
-updateQueueBtn.addEventListener('click', () => {
-    const queueSize = parseInt(updateQueueSize.value);
-    if (isNaN(queueSize) || queueSize < 0) {
-        alert('Please enter a valid queue size (0 or greater)');
-        return;
-    }
-    
-    const status = queueTracker.updateQueue(queueSize);
-    updateStatus(status);
-    
-    // Save to localStorage if queue is still active, otherwise clear data
-    if (queueTracker.isActive) {
-        saveQueueData();
-    } else {
-        clearSavedData();
-    }
-});
-
-// Update the UI every second (just the time values, not the whole status)
-function updateTimerUI() {
-    if (!queueTracker.isActive) {
-        clearInterval(updateTimer);
-        return;
-    }
-    
-    const status = queueTracker.getStatus();
-    
-    // Update only time-based fields for efficiency
-    const currentTimeEl = document.getElementById('current-time');
-    const elapsedTimeEl = document.getElementById('elapsed-time');
-    const remainingTimeEl = document.getElementById('remaining-time');
-    
-    if (currentTimeEl) currentTimeEl.textContent = status.currentTime;
-    if (elapsedTimeEl) elapsedTimeEl.textContent = status.elapsedTime;
-    if (remainingTimeEl) remainingTimeEl.textContent = status.remainingTime;
-    
-    // Update the main message
-    if (queueMessage) {
-        queueMessage.textContent = `Estimated completion time: ${status.estimatedFinishTime}`;
+    try {
+        // Create a data object with serialized dates
+        const dataToSave = {
+            isActive: tracker.isActive,
+            startTime: tracker.startTime ? tracker.startTime.getTime() : null,
+            finishTime: tracker.finishTime ? tracker.finishTime.getTime() : null,
+            initialQueueSize: tracker.initialQueueSize,
+            currentQueueSize: tracker.currentQueueSize,
+            estimatedTimePerPerson: tracker.estimatedTimePerPerson,
+            raidBoss: tracker.raidBoss,
+            
+            // Serialize queue history with timestamps instead of Date objects
+            queueHistory: tracker.queueHistory.map(entry => ({
+                time: entry.time.getTime(),
+                size: entry.size
+            })),
+            
+            // Serialize raid boss history with timestamps
+            raidBossHistory: {}
+        };
+        
+        // Handle raid boss history serialization
+        for (const boss in tracker.raidBossHistory) {
+            dataToSave.raidBossHistory[boss] = {
+                totalQueues: tracker.raidBossHistory[boss].totalQueues,
+                averageTimePerPerson: tracker.raidBossHistory[boss].averageTimePerPerson,
+                
+                // Convert Date objects to timestamps in completed queues
+                completedQueues: tracker.raidBossHistory[boss].completedQueues.map(queue => ({
+                    startTime: queue.startTime.getTime(),
+                    finishTime: queue.finishTime.getTime(),
+                    initialSize: queue.initialSize,
+                    timePerPerson: queue.timePerPerson,
+                    totalDuration: queue.totalDuration
+                }))
+            };
+        }
+        
+        localStorage.setItem('pokegenie-queue-data', JSON.stringify(dataToSave));
+    } catch (error) {
+        console.error('Error saving queue data:', error);
     }
 }
 
-// Update UI with status
-function updateStatus(status) {
-    if (status.isActive) {
-        startQueueCard.classList.add('hidden');
-        updateQueueCard.classList.remove('hidden');
-        statusContainer.classList.remove('hidden');
-        queueMessage.classList.remove('hidden');
+/**
+ * Load queue data from localStorage
+ * @returns {Object|null} The saved data or null if none exists
+ */
+function loadQueueData() {
+    try {
+        const savedData = localStorage.getItem('pokegenie-queue-data');
+        if (!savedData) return null;
         
-        queueMessage.textContent = `Estimated completion time: ${status.estimatedFinishTime}`;
+        const parsedData = JSON.parse(savedData);
         
-        statusDetails.innerHTML = `
-            <div class="status-item">
-                <div class="status-label">Raid Boss</div>
-                <div class="status-value">${status.raidBoss}</div>
-            </div>
-            <div class="status-item">
-                <div class="status-label">Current Queue Size</div>
-                <div id="current-size" class="status-value">${status.currentSize} people</div>
-            </div>
-            <div class="status-item">
-                <div class="status-label">Initial Queue Size</div>
-                <div class="status-value">${status.initialSize} people</div>
-            </div>
-            <div class="status-item">
-                <div class="status-label">Queue Started</div>
-                <div class="status-value">${status.startTime}</div>
-            </div>
-            <div class="status-item">
-                <div class="status-label">Current Time</div>
-                <div id="current-time" class="status-value">${status.currentTime}</div>
-            </div>
-            <div class="status-item">
-                <div class="status-label">Elapsed Time</div>
-                <div id="elapsed-time" class="status-value">${status.elapsedTime}</div>
-            </div>
-            <div class="status-item">
-                <div class="status-label">Average Time Per Person</div>
-                <div class="status-value">${status.estimatedTimePerPerson} (${status.rawSecondsPerPerson} seconds)</div>
-            </div>
-            <div class="status-item">
-                <div class="status-label">Remaining Time</div>
-                <div id="remaining-time" class="status-value">${status.remainingTime}</div>
-            </div>
-        `;
-    } else if (status.message === "Queue complete") {
-        if (updateTimer) clearInterval(updateTimer);
+        // Convert timestamps back to Date objects
+        if (parsedData.startTime) {
+            parsedData.startTime = new Date(parsedData.startTime);
+        }
         
-        startQueueCard.classList.remove('hidden');
-        updateQueueCard.classList.add('hidden');
-        statusContainer.classList.add('hidden');
-        queueMessage.classList.remove('hidden');
-        queueMessage.textContent = `Queue completed at ${status.finishTime} for ${status.raidBoss}`;
-    } else {
-        startQueueCard.classList.remove('hidden');
-        updateQueueCard.classList.add('hidden');
-        statusContainer.classList.add('hidden');
-        queueMessage.classList.add('hidden');
+        if (parsedData.finishTime) {
+            parsedData.finishTime = new Date(parsedData.finishTime);
+        }
+        
+        // Convert queue history timestamps to Date objects
+        if (parsedData.queueHistory && Array.isArray(parsedData.queueHistory)) {
+            parsedData.queueHistory = parsedData.queueHistory.map(entry => ({
+                time: new Date(entry.time),
+                size: entry.size
+            }));
+        }
+        
+        // Convert raid boss history timestamps
+        if (parsedData.raidBossHistory) {
+            for (const boss in parsedData.raidBossHistory) {
+                if (parsedData.raidBossHistory[boss].completedQueues) {
+                    parsedData.raidBossHistory[boss].completedQueues = 
+                        parsedData.raidBossHistory[boss].completedQueues.map(queue => ({
+                            startTime: new Date(queue.startTime),
+                            finishTime: new Date(queue.finishTime),
+                            initialSize: queue.initialSize,
+                            timePerPerson: queue.timePerPerson,
+                            totalDuration: queue.totalDuration
+                        }));
+                }
+            }
+        }
+        
+        return parsedData;
+    } catch (error) {
+        console.error('Error loading queue data:', error);
+        return null;
     }
 }
-// Add this to js/ui/ui-handler.js
 
-// Get reference to leave queue button
-const leaveQueueBtn = document.getElementById('leave-queue-btn');
+/**
+ * Clear saved queue data from localStorage
+ */
+function clearSavedData() {
+    localStorage.removeItem('pokegenie-queue-data');
+}
 
-// Add event listener for leave queue button
-leaveQueueBtn.addEventListener('click', () => {
-    // Ask for confirmation
-    if (confirm('Are you sure you want to leave the queue? Your current progress will be lost.')) {
-        leaveQueue();
+/**
+ * Restore queue tracker state from saved data
+ * @param {QueueTracker} tracker - The queue tracker instance to update
+ * @returns {boolean} True if state was restored successfully
+ */
+function restoreQueueState(tracker) {
+    const savedData = loadQueueData();
+    if (!savedData) return false;
+    
+    try {
+        // Restore basic properties
+        tracker.isActive = savedData.isActive;
+        tracker.startTime = savedData.startTime;
+        tracker.finishTime = savedData.finishTime;
+        tracker.initialQueueSize = savedData.initialQueueSize;
+        tracker.currentQueueSize = savedData.currentQueueSize;
+        tracker.estimatedTimePerPerson = savedData.estimatedTimePerPerson;
+        tracker.raidBoss = savedData.raidBoss;
+        
+        // Restore queue history if available
+        if (savedData.queueHistory) {
+            tracker.queueHistory = savedData.queueHistory;
+        }
+        
+        // Restore raid boss history if available
+        if (savedData.raidBossHistory) {
+            tracker.raidBossHistory = savedData.raidBossHistory;
+        }
+        
+        // Recalculate estimate
+        if (tracker.isActive) {
+            tracker.calculateEstimate();
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Error restoring queue state:', error);
+        return false;
     }
-});
-
-// Function to handle leaving the queue
-function leaveQueue() {
-    // Reset queue tracker
-    queueTracker.isActive = false;
-    queueTracker.startTime = null;
-    queueTracker.initialQueueSize = 0;
-    queueTracker.currentQueueSize = 0;
-    queueTracker.queueHistory = [];
-    queueTracker.estimatedTimePerPerson = 60;
-    queueTracker.finishTime = null;
-    queueTracker.raidBoss = null;
-    
-    // Clear the update timer
-    if (updateTimer) {
-        clearInterval(updateTimer);
-        updateTimer = null;
-    }
-    
-    // Clear saved data
-    clearSavedData();
-    
-    // Reset UI elements
-    startQueueSize.value = '';
-    updateQueueSize.value = '';
-    raidBossSelect.selectedIndex = 0;
-    
-    // Show start screen, hide others
-    startQueueCard.classList.remove('hidden');
-    updateQueueCard.classList.add('hidden');
-    statusContainer.classList.add('hidden');
-    queueMessage.classList.add('hidden');
 }

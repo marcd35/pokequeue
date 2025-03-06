@@ -5,61 +5,157 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pokegenie Queue Tracker</title>
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/components/raid-boss.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 <body>
     <div class="container">
-        <h1>Pokegenie Queue Tracker</h1>
-        
+        <header>
+            <h1>Pokegenie Queue Tracker</h1>
+            <p class="subtitle">Track your remote raid queue wait time</p>
+        </header>
+
+        <div id="queue-message" class="message hidden"></div>
+
         <div id="start-queue-card" class="card">
-            <h2>Start New Queue</h2>
-            <div class="input-group">
-                <input type="number" id="start-queue-size" placeholder="Number of people in queue" min="1">
-                <button id="start-queue-btn">Start Queue</button>
+            <div class="card-header">
+                <h2>Start Queue Tracking</h2>
             </div>
-            
-            <!-- Raid Boss Selection Dropdown -->
-            <div class="input-group">
-                <select id="raid-boss-select" class="raid-boss-dropdown">
-                    <option value="" disabled selected>Select Raid Boss</option>
-                    <option value="Genesect">Genesect</option>
-                    <option value="Rayquaza">Rayquaza</option>
-                    <option value="Mewtwo">Mewtwo</option>
-                    <option value="Groudon">Groudon</option>
-                    <option value="Kyogre">Kyogre</option>
-                    <option value="Dialga">Dialga</option>
-                    <option value="Palkia">Palkia</option>
-                    <option value="Giratina">Giratina</option>
-                    <option value="Reshiram">Reshiram</option>
-                    <option value="Zekrom">Zekrom</option>
-                    <option value="Other">Other</option>
-                </select>
+            <div class="card-body">
+                <div class="form-group">
+                    <label for="start-queue-size">Your Position in Queue:</label>
+                    <input type="number" id="start-queue-size" class="form-control" placeholder="Enter position number" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="raid-boss-select">Select Raid Boss:</label>
+                    <select id="raid-boss-select" class="form-control" required>
+                        <option value="">-- Select Raid Boss --</option>
+                        <option value="mewtwo">Mewtwo</option>
+                        <option value="groudon">Groudon</option>
+                        <option value="kyogre">Kyogre</option>
+                        <option value="rayquaza">Rayquaza</option>
+                        <option value="dialga">Dialga</option>
+                        <option value="palkia">Palkia</option>
+                        <option value="giratina">Giratina</option>
+                        <option value="darkrai">Darkrai</option>
+                        <option value="lugia">Lugia</option>
+                        <option value="ho-oh">Ho-Oh</option>
+                        <option value="mega-gengar">Mega Gengar</option>
+                        <option value="mega-gyarados">Mega Gyarados</option>
+                        <option value="mega-charizard">Mega Charizard</option>
+                        <option value="mega-blastoise">Mega Blastoise</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <button id="start-queue-btn" class="btn btn-primary">Start Tracking</button>
             </div>
         </div>
-        
+
         <div id="update-queue-card" class="card hidden">
-            <h2>Update Queue</h2>
-            <div class="input-group">
-                <input type="number" id="update-queue-size" placeholder="Current people in queue" min="0">
-                <button id="update-queue-btn">Update Queue</button>
+            <div class="card-header">
+                <h2>Update Queue Position</h2>
             </div>
-            <div class="input-group">
-                <button id="leave-queue-btn" class="secondary-btn">Leave Queue</button>
+            <div class="card-body">
+                <div class="form-group">
+                    <label for="update-queue-size">Current Position in Queue:</label>
+                    <input type="number" id="update-queue-size" class="form-control" placeholder="Enter current position" min="0" required>
+                    <small class="form-text">Enter 0 when you reach the front of the queue</small>
+                </div>
+                <div class="button-group">
+                    <button id="update-queue-btn" class="btn btn-primary">Update Position</button>
+                    <button id="leave-queue-btn" class="btn btn-danger">Leave Queue</button>
+                </div>
             </div>
         </div>
-        
-        <div id="queue-message" class="hidden"></div>
-        
-        <div id="status-container" class="status-container hidden">
-            <h2>Queue Status</h2>
-            <div id="status-details" class="status-grid"></div>
+
+        <div id="status-container" class="card hidden">
+            <div class="card-header">
+                <h2>Queue Status</h2>
+            </div>
+            <div class="card-body">
+                <div id="status-details" class="status-grid">
+                    <!-- Status will be populated by JavaScript -->
+                </div>
+            </div>
         </div>
+
+        <footer>
+            <p>Note: This app is not affiliated with Pokegenie. Data is stored locally on your device.</p>
+            <div id="version">Version 1.1.0 - Raid Boss Tracking</div>
+        </footer>
     </div>
 
     <!-- Scripts -->
+    <!-- First load the models and utilities -->
     <script src="js/models/QueueTracker.js"></script>
     <script src="js/utils/storage.js"></script>
-    <script src="js/ui/ui-handler.js"></script>
+    
+    <!-- Then load the main app that coordinates everything -->
     <script src="js/app.js"></script>
+    
+    <!-- Optional: Uncomment if you need the old ui-handler -->
+    <!-- <script src="js/ui/ui-handler.js"></script> -->
+
+    <!-- Debug Helper - Remove in production -->
+    <script>
+        // Log any errors that occur
+        window.addEventListener('error', function(e) {
+            console.error('Global error caught:', e.error);
+            alert('An error occurred: ' + e.error.message);
+        });
+        
+        // Add console logger for mobile debugging
+        if (!window.console || !console.log) {
+            const logger = document.createElement('div');
+            logger.id = 'console-log';
+            logger.style.cssText = 'position:fixed; bottom:0; left:0; right:0; max-height:150px; overflow:auto; background:rgba(0,0,0,0.8); color:white; font-family:monospace; font-size:12px; padding:10px; z-index:9999;';
+            document.body.appendChild(logger);
+            
+            window.console = {
+                log: function() {
+                    const args = Array.prototype.slice.call(arguments);
+                    const message = args.map(arg => {
+                        if (typeof arg === 'object') {
+                            try {
+                                return JSON.stringify(arg);
+                            } catch(e) {
+                                return String(arg);
+                            }
+                        }
+                        return String(arg);
+                    }).join(' ');
+                    
+                    const logLine = document.createElement('div');
+                    logLine.textContent = '> ' + message;
+                    logger.appendChild(logLine);
+                    logger.scrollTop = logger.scrollHeight;
+                },
+                error: function() {
+                    const args = Array.prototype.slice.call(arguments);
+                    const message = args.map(arg => {
+                        if (typeof arg === 'object') {
+                            try {
+                                return JSON.stringify(arg);
+                            } catch(e) {
+                                return String(arg);
+                            }
+                        }
+                        return String(arg);
+                    }).join(' ');
+                    
+                    const logLine = document.createElement('div');
+                    logLine.textContent = '> ERROR: ' + message;
+                    logLine.style.color = '#ff5555';
+                    logger.appendChild(logLine);
+                    logger.scrollTop = logger.scrollHeight;
+                },
+                warn: function() {
+                    this.log.apply(this, arguments);
+                },
+                info: function() {
+                    this.log.apply(this, arguments);
+                }
+            };
+        }
+    </script>
 </body>
 </html>

@@ -350,7 +350,39 @@
                 alert('Please enter a valid queue size (greater than 0)');
                 return;
             }
-            
+            startQueueBtn.addEventListener('click', () => {
+    const queueSize = parseInt(startQueueSize.value);
+    
+    try {
+        // Added validation for queue size
+        if (isNaN(queueSize) || queueSize <= 0) {
+            throw new Error('Please enter a valid queue size (greater than 0)');
+        }
+        
+        // Added validation for raid boss
+        const raidBoss = raidBossSelect.value;
+        if (!raidBoss) {
+            throw new Error('Please select a raid boss');
+        }
+        
+        const status = queueTracker.startQueue(queueSize, raidBoss);
+        updateQueueSize.value = queueSize;
+        updateStatus(status);
+        
+        // ADDED: Show raid boss stats if available
+        showRaidBossStats();
+        
+        // Save to localStorage
+        saveQueueData(queueTracker);
+        
+        // Start the update timer
+        if (updateTimer) clearInterval(updateTimer);
+        updateTimer = setInterval(updateTimerUI, 1000);
+    } catch (error) {
+        // ADDED: Better error handling
+        alert(error.message);
+    }
+});    
             const status = queueTracker.startQueue(queueSize);
             updateQueueSize.value = queueSize;
             updateStatus(status);
